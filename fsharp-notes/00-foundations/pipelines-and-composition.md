@@ -32,7 +32,7 @@ List.sum (List.map (fun x -> x * 2) [1;2;3])
 
 ## Function composition
 
-Composition combines functions into a new function.
+Composition combines functions into a new function. 
 
 Operator:
 
