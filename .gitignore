@@ -1,0 +1,14 @@
+# OS-specific files
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Compressed files
+*.zip
+*.tar.gz   
