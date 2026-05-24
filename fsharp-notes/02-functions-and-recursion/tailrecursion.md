@@ -1,4 +1,6 @@
 ﻿# Tail Recursion
+See also slides 'Lecture 8' or HR chapters  8.1 - 8.6 and 9
+
 Tail recursion is...
 
 - Accumulators and Continuations are used to transform non-tail-recursive functions into tail-recursive ones.
