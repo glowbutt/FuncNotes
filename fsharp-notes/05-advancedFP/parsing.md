@@ -41,3 +41,72 @@ Result:
 ('(', 123)
 
 .>> keeps only left side, >>. keeps only right side.
+
+### OR
+<|>
+
+try left parser, if it fails try right parser
+
+Example:\
+pchar '+' <|> pchar '-'
+
+### REPETITION
+
+many p\
+parse 0 or more occurrences
+
+many1 p\
+parse 1 or more occurrences
+
+Example:
+- many (satisfy isLetter)\
+Result:
+- list of chars
+
+### OPTIONAL PARSING
+
+opt p
+- optional parser
+
+Returns:\
+Some value if found\
+None if not found
+
+### COMMON HELPERS
+
+between pOpen pClose pContent\
+parses content inside delimiters
+
+Example:
+between (pchar '(') (pchar ')') pint32
+
+Result:
+number inside parentheses
+
+### LIST PARSERS
+
+sepBy p sep\
+parse list of p separated by sep
+
+Example:\
+sepBy pint32 (pchar ',')
+
+Input:
+1,2,3
+
+Result:
+[1;2;3]
+
+### RECURSIVE PARSERS
+
+Sometimes grammar is recursive:
+
+Example:\
+expression -> expression + term | term
+
+To define this you use:\
+createParserForwardedToRef
+
+This allows:
+- defining parser before it exists
+- filling it later
