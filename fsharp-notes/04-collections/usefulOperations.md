@@ -6,6 +6,16 @@ String to array\
 
 List to string (char list)\
 ```System.String(List.toArray lst)```
+or just 
+```String.Concat```
+if possible like ine:
+``` fsharp
+   let baz2 (str : string)  : string =
+        str
+        |> bar
+        |> List.map foo
+        |> String.Concat
+```
 
 String to list\
 ```s |> Seq.toList```
