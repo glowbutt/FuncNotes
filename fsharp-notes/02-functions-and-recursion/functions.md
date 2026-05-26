@@ -1,0 +1,1 @@
+Please write about functions. include code examples, currying, high-order functions, common usages

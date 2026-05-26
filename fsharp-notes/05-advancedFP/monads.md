@@ -1,4 +1,6 @@
-﻿What is a Monad?\
+﻿IMPORTANT: Only minimal additions to this file!! dont alter overall structure. Feel free to clarify sections.
+
+What is a Monad?\
 A monad is a wrapper around a value that also carries some extra context (like state, errors, lists, etc.). The wrapper lets you chain computations together without manually threading that context everywhere.
 
 A State Monad specifically carries:

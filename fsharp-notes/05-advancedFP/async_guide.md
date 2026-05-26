@@ -1,3 +1,5 @@
+please polish this file about async programming. make it more readable and concise.
+
 # F# Async, Concurrency, and Parallelism
 
 ## 1. Intro
