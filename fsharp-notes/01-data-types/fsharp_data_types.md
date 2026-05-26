@@ -1,23 +1,16 @@
-# F# Data Types — Complete Exam Cheat Sheet
+# Data Types (Lectures 1–2, 4)
+
+How to model data in F#: primitives, tuples, records, discriminated unions
+(algebraic data types), `Option`/`Result`, and recursive types — plus pattern
+matching, the tool that takes them apart.
+
+> Covered elsewhere: immutability, type inference & polymorphism → `00-foundations`;
+> list/collection *operations* (`map`/`filter`/`fold`) → `02-functions-and-recursion`
+> and `04-collections`.
 
 ---
 
-## Immutability by Default
-
-F# values are **immutable** by default. Use `mutable` + `<-` to opt in:
-
-```fsharp
-let x = 5           // immutable
-let mutable y = 5   // mutable
-y <- 10             // ok
-x <- 10             // ❌ compiler error
-```
-
-Prefer immutability — it avoids side effects and makes reasoning easier.
-
----
-
-## Primitive Types
+## 1. Primitive & unit types
 
 ```fsharp
 let i : int    = 42
@@ -25,178 +18,137 @@ let f : float  = 3.14
 let b : bool   = true
 let s : string = "hello"
 let c : char   = 'a'
-let u : unit   = ()   // "nothing" — like void, but a real value
+let u : unit   = ()    // "nothing" — like void, but a real value
 ```
 
-Type annotations are optional — F# **infers types** automatically:
-
-```fsharp
-let square x = x * x          // inferred: int -> int
-let square (x:float) = x * x  // forced:   float -> float
-```
+Annotations are optional — F# **infers** types. `int` and `float` never mix
+implicitly; convert with `float x` / `int x`.
 
 ---
 
-## Tuples
+## 2. Tuples — anonymous grouping
 
-Quick, anonymous grouping. No field names. Components accessed by position or destructuring.
+Fixed-size, ordered, **no field names**. Type is written with `*`.
 
 ```fsharp
 let point  = (3, 4)               // int * int
 let triple = ("Alice", 30, true)  // string * int * bool
 
-// Destructuring
-let (x, y) = point      // x = 3, y = 4
-let (_, b, _) = triple  // b = 30 (wildcard _ ignores)
-
-// Built-in helpers for pairs
-fst (1, "a")  // 1
-snd (1, "a")  // "a"
-
-// In function patterns
-let add (a, b) = a + b   // add : int * int -> int
-add (3, 4)               // 7
+let (x, y)    = point             // destructure: x = 3, y = 4
+let (_, b, _) = triple            // wildcard _ ignores a component
+fst (1, "a")                      // 1     (pairs only)
+snd (1, "a")                      // "a"
 ```
 
-**Use when:** quick, throwaway grouping — no semantic weight needed.
+**Use when:** a quick, throwaway grouping with no semantic weight.
 
 ---
 
-## Records
+## 3. Records — named fields
 
-Named fields. Like a struct or named tuple. Must declare type first.
+A fixed set of named fields that always coexist. Declare the type first.
 
 ```fsharp
-// Declare
-type Person = { Name: string; Age: int; Birthday: int * int }
+type Person = { Name: string; Age: int }
 
-// Create
-let alice = { Name = "Alice"; Age = 30; Birthday = (3, 7) }
+let alice = { Name = "Alice"; Age = 30 }   // field order doesn't matter
+let n     = alice.Name                     // "Alice"
+let older = { alice with Age = 31 }        // copy-and-update; alice unchanged
 
-// Access fields
-let n = alice.Name          // "Alice"
-let a = alice.Age           // 30
+// pattern match on fields
+let greet { Name = n; Age = a } = printfn "%s is %d" n a
 
-// "Update" — creates a copy, original is unchanged
-let older = { alice with Age = 31 }
-
-// Pattern matching on records
-let greet { Name = n; Age = a } =
-    printfn "%s is %d years old" n a
-
-// Equality is structural (field-by-field)
-alice = { Name = "Alice"; Age = 30; Birthday = (3, 7) }  // true
+alice = { Age = 30; Name = "Alice" }       // true — equality is structural
 ```
 
-**Note:** Field order doesn't matter when creating or comparing records.
-
-**Use when:** a fixed set of named fields all belong together (a `Person`, `Config`, `Point`).
+**Use when:** an entity has a fixed set of fields all present at once
+(`Person`, `Config`, `Point`). A record says *"all of these together."*
 
 ---
 
-## Discriminated Unions (DU) — Tagged Values / Algebraic Data Types
+## 4. Discriminated Unions (algebraic data types)
 
-A value that is **exactly one** of several distinct cases, each optionally carrying data.
-Also called: tagged values, sum types, or algebraic data types in HR.
+A value that is **exactly one** of several cases, each optionally carrying data.
+Also called *inductively defined types*, *tagged values*, *sum types*, or
+*disjoint unions*. Declared with `type` (not `let`); a DU concisely says **how
+the members of a type are created**.
 
 ```fsharp
-// Declare
 type Shape =
     | Circle   of float
     | Square   of float
     | Triangle of float * float * float
 
-// Create — constructors are functions
-let c = Circle 1.2                  // Shape
-let s = Square 3.4                  // Shape
-let t = Triangle (3.0, 4.0, 5.0)   // Shape
-
-// Pattern match — compiler forces ALL cases
-let area shape =
-    match shape with
-    | Circle r          -> System.Math.PI * r * r
-    | Square a          -> a * a
-    | Triangle (a,b,c)  ->
-        let s = (a + b + c) / 2.0
-        sqrt (s*(s-a)*(s-b)*(s-c))
-
-area (Circle 1.2)            // 4.52...
-area (Triangle(3.0,4.0,5.0)) // 6.0
+let c = Circle 1.2                 // constructors are functions: Shape
+let t = Triangle (3.0, 4.0, 5.0)
 ```
 
-**Key rule:** A constructor only matches itself — not other constructors.
-
-**Cases without data** (enumerations):
+Cases **without data** behave like an enum (Java `enum`):
 
 ```fsharp
-type Direction = | North | South | East | West
-
-let move dir =
-    match dir with
-    | North -> "going north"
-    | South -> "going south"
-    | East  -> "going east"
-    | West  -> "going west"
+type Direction = North | South | East | West
 ```
 
-**Use when:** a value can be one of several mutually exclusive alternatives.
+### Pattern matching
+
+The way you consume a DU. The compiler **checks all cases are covered**
+(incomplete matches warn). A constructor only matches itself.
+
+```fsharp
+let area shape =
+    match shape with
+    | Circle r         -> System.Math.PI * r * r
+    | Square a         -> a * a
+    | Triangle (a,b,c) -> let s = (a + b + c) / 2.0
+                          sqrt (s*(s-a)*(s-b)*(s-c))
+```
+
+**Use when:** a value is one of several mutually exclusive alternatives — a
+state machine, a command, success/failure. A DU says *"exactly one of these."*
 
 ---
 
-## Option — The Canonical DU
+## 5. Option & Result — the canonical DUs
 
-Replaces `null`. Either there is a value, or there isn't.
+`Option` replaces `null`: there either is a value or there isn't.
 
 ```fsharp
-// Built-in definition:
-// type 'a option = | Some of 'a | None
-
-let safeDivide a b =
-    if b = 0 then None
-    else Some (a / b)
+// type 'a option = Some of 'a | None
+let safeDivide a b = if b = 0 then None else Some (a / b)
 
 match safeDivide 10 2 with
 | Some v -> printfn "Result: %d" v
 | None   -> printfn "Division by zero"
 ```
 
----
-
-## Result — Errors Without Exceptions
+`Result` carries an error instead of just absence — errors without exceptions.
 
 ```fsharp
-// type Result<'a,'e> = | Ok of 'a | Error of 'e
-
+// type Result<'a,'e> = Ok of 'a | Error of 'e
 let parseInt (s: string) : Result<int, string> =
-    match System.Int32.TryParse(s) with
+    match System.Int32.TryParse s with
     | true,  v -> Ok v
     | false, _ -> Error $"'{s}' is not a number"
 ```
 
 ---
 
-## Recursive Types
+## 6. Recursive types — trees & expressions
 
-Types that refer to themselves. Used to build trees, expressions, linked structures, etc.
+A type whose cases refer to itself: how you model hierarchical data.
 
 ```fsharp
-// Binary tree
-type 'a Tree =
+type Tree =
     | Leaf
-    | Node of 'a * 'a Tree * 'a Tree
+    | Node of Tree * int * Tree
 
-// Create
-let myTree = Node(1, Node(2, Leaf, Leaf), Node(3, Leaf, Leaf))
-
-// Recurse over it
-let rec size = function
-    | Leaf           -> 0
-    | Node(_, l, r)  -> 1 + size l + size r
-
-size myTree  // 3
+let rec sum t =
+    match t with
+    | Leaf          -> 0
+    | Node (l,n,r)  -> sum l + n + sum r
 ```
 
-Another classic — arithmetic expressions:
+The classic **expression tree** (a tiny calculator) — data *represents* a program:
 
 ```fsharp
 type Expr =
@@ -205,118 +157,92 @@ type Expr =
     | Mul of Expr * Expr
 
 let rec eval = function
-    | Num n         -> n
-    | Add (e1, e2)  -> eval e1 + eval e2
-    | Mul (e1, e2)  -> eval e1 * eval e2
+    | Num n        -> n
+    | Add (e1, e2) -> eval e1 + eval e2
+    | Mul (e1, e2) -> eval e1 * eval e2
 
-// Represents: (2 + 3) * 4
-eval (Mul(Add(Num 2, Num 3), Num 4))  // 20
+eval (Mul (Add (Num 2, Num 3), Num 4))   // (2 + 3) * 4 = 20
 ```
 
-**Use when:** data is inherently hierarchical or self-referential (trees, expressions, parsers).
+**Use when:** data is inherently hierarchical or self-referential — trees,
+expressions, parsers. (Recursing over these → `02-functions-and-recursion`.)
 
 ---
 
-## Lists
+## 7. Lists — built-in recursive DU
 
-Immutable, singly-linked. All elements must be the same type.
+Immutable, singly-linked, all elements the same type. Conceptually
+`[] | head :: tail`, so they pattern-match like any DU.
 
 ```fsharp
 let xs = [1; 2; 3]
-let ys = 0 :: xs       // prepend → [0; 1; 2; 3]
-let zs = xs @ [4; 5]   // append  → [1; 2; 3; 4; 5]
+let ys = 0 :: xs        // prepend  → [0; 1; 2; 3]   (cheap)
+let zs = xs @ [4; 5]    // append   → [1; 2; 3; 4; 5]
 
-// Pattern matching
 match xs with
-| []       -> "empty"
-| [x]      -> "singleton"
-| x :: rest -> $"head={x}, tail has {List.length rest} elements"
+| []        -> "empty"
+| [x]       -> "one element"
+| x :: rest -> $"head={x}, {List.length rest} more"
+```
 
-// Common operations
-List.map    (fun x -> x * 2) [1;2;3]   // [2; 4; 6]
-List.filter (fun x -> x > 1) [1;2;3]   // [2; 3]
-List.fold   (fun acc x -> acc + x) 0 [1;2;3]  // 6
+> Operations (`map`/`filter`/`fold`) and other collections (arrays, sets, maps,
+> sequences) live in `04-collections`.
+
+---
+
+## 8. Generic types
+
+Records and DUs can take type parameters (`'a`, `'b`, …):
+
+```fsharp
+type 'a Store = { Data: 'a; Owner: int option }
+type 'a Tree  = Leaf | Node of 'a * 'a Tree * 'a Tree   // tree of any element type
 ```
 
 ---
 
-## Exceptions
-
-Signal errors. Can be raised and caught.
+## 9. Exceptions (when a value can't express the error)
 
 ```fsharp
-// Declare a named exception
 exception MyError of string
+raise (MyError "went wrong")
+failwith "quick error"            // shorthand
 
-// Raise
-raise (MyError "something went wrong")
-failwith "quick error message"    // built-in shorthand
-
-// Catch
-try
-    let result = someRiskyOperation()
-    printfn "OK: %d" result
+try someRiskyOp ()
 with
 | MyError msg -> printfn "Error: %s" msg
-| :? System.DivideByZeroException -> printfn "Division by zero"
+| :? System.DivideByZeroException -> printfn "div by zero"
 ```
+
+Prefer `Option`/`Result` for *expected* failures; reserve exceptions for the
+truly exceptional.
 
 ---
 
-## Generic Types
-
-Both records and DUs can be parameterized with type variables:
-
-```fsharp
-// Generic record
-type 'a Store = { Data: 'a; Owner: int option }
-
-let s : int Store = { Data = 42; Owner = Some 1 }
-
-// Generic DU
-type 'a MyOption =
-    | MySome of 'a
-    | MyNone
-
-// Generic tree (from above)
-type 'a Tree = | Leaf | Node of 'a * 'a Tree * 'a Tree
-```
-
----
-
-## DU vs Record — When to Use Which?
+## 10. Record vs DU — which one?
 
 | Situation | Use |
 |-----------|-----|
-| Fixed set of named fields that always coexist | **Record** |
-| Value can be *one of several distinct things* | **DU** |
-| Modelling a state machine or game state | **DU** |
-| Success/failure/absence | **DU** (`Result`, `Option`) |
-| Hierarchical or recursive data | **DU** |
-| Config, entity, data transfer object | **Record** |
+| Fixed set of fields that always coexist | **Record** |
+| Value is *one of* several distinct things | **DU** |
+| State machine / game state | **DU** |
+| Success / failure / absence | **DU** (`Result`, `Option`) |
+| Hierarchical or recursive data | **DU** (recursive) |
+| Config, entity, DTO | **Record** |
 
 ```fsharp
-// ✅ Record: a player always has BOTH a name AND a score
-type Player = { Name: string; Score: int }
-
-// ✅ DU: a game state is exactly ONE of these at a time
-type GameState =
+type Player = { Name: string; Score: int }      // ✅ always BOTH fields
+type GameState =                                 // ✅ exactly ONE at a time
     | Running of Player
     | Won     of Player
     | Draw
 ```
 
-A record says **"all of these things together"**.
-A DU says **"exactly one of these alternatives"**.
+### Quick comparison
 
----
-
-## Quick Comparison Table
-
-| Type | Named fields | Multiple cases | Pattern match | Recursive | Immutable |
-|------|:-:|:-:|:-:|:-:|:-:|
-| Tuple  | ❌ | ❌ | ✅ | ❌ | ✅ |
-| Record | ✅ | ❌ | ✅ | ❌ | ✅ (default) |
-| DU     | per-case | ✅ | ✅ exhaustive | ✅ | ✅ |
-| List   | ❌ | ❌ | ✅ | ✅ | ✅ |
-
+| Type | Named fields | Multiple cases | Recursive | Immutable |
+|------|:-:|:-:|:-:|:-:|
+| Tuple  | ❌ | ❌ | ❌ | ✅ |
+| Record | ✅ | ❌ | ❌ | ✅ (default) |
+| DU     | per-case | ✅ | ✅ | ✅ |
+| List   | ❌ | ❌ | ✅ | ✅ |
