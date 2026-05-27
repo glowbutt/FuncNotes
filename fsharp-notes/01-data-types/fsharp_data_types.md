@@ -106,6 +106,39 @@ let area shape =
 **Use when:** a value is one of several mutually exclusive alternatives — a
 state machine, a command, success/failure. A DU says *"exactly one of these."*
 
+### Unwrapping: binding through a pattern
+
+A `let` doesn't only bind names — it can bind through a **pattern**. For a
+**single-case** DU (a wrapper), that lets you pull the contents out in one line:
+
+```fsharp
+type Board = T of int[]          // a single-case DU wrapping an array
+let t = T [| 1; 2; 3 |]
+
+let (T arr) = t                  // arr : int[]  — unwrapped in the binding
+let area (T arr) = Array.sum arr // same trick in a function parameter
+```
+
+This is safe because the pattern is **irrefutable** — there's only one case, so
+it always matches. (It's exactly the `let (SM a) = …` idiom in the monads
+section of `05-advancedFP`.) The same works for any irrefutable pattern —
+tuples and records:
+
+```fsharp
+let (x, y)        = (3, 4)            // tuple
+let { Name = n }  = { Name = "A"; Age = 1 }   // record field
+```
+
+> ⚠️ A **refutable** (multi-case) pattern compiles but warns and may crash at
+> runtime if it doesn't match: `let (Some x) = o` or `let x :: rest = xs`. For
+> those, use `match` instead.
+
+**…and "wrapper" types that aren't single-case DUs?** The analog differs:
+- `Async<'T>` — unwrap with `let! x = …` inside an `async { }` workflow (→ `05-advancedFP`).
+- `seq` / `Set` / `Map` — *abstract* types with no visible constructor, so there's
+  nothing to pattern-match; read them with module functions (`Seq.head`,
+  `Set.minElement`, `Map.tryFind`) or convert (→ `04-collections`).
+
 ---
 
 ## 5. Option & Result — the canonical DUs
