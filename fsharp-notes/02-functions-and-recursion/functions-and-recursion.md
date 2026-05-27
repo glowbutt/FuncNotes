@@ -1,7 +1,7 @@
 # Functions & Recursion (Lectures 1–5, 8)
 
 The two engines of F#: **higher-order functions** (functions that take or return
-functions — `map`/`filter`/`fold`) replace most loops, and **recursion** is how
+functions - `map`/`filter`/`fold`) replace most loops, and **recursion** is how
 functions repeat. Then how to make recursion safe with **tail recursion**.
 
 > Covered elsewhere: function declaration, currying, partial application,
@@ -15,7 +15,7 @@ functions repeat. Then how to make recursion safe with **tail recursion**.
 
 A **higher-order function (HOF)** takes a function as an argument and/or returns
 one. Because functions are values in F#, this is ordinary. HOFs let you write
-short, declarative code and **replace loops** — done well, programs become
+short, declarative code and **replace loops** - done well, programs become
 concise and easy to read.
 
 ```fsharp
@@ -28,7 +28,7 @@ let add5 = adder 5               // add5 7 = 12
 
 ---
 
-## 2. map, filter, fold — the workhorses
+## 2. map, filter, fold
 
 Three HOFs cover most list processing. (They exist for every collection, e.g.
 `List.map`, `Array.map`, `Seq.map`.)
@@ -79,7 +79,7 @@ let mergeLastDigits lst =
 mergeLastDigits [123; 124; 5; 1233]         // "353"
 ```
 
-The same thing point-free with composition (`>>`) reads worse — prefer the
+The same thing point-free with composition (`>>`) reads worse - prefer the
 piped form. **Become good friends with `|>`, `>>`, `map`, `filter`, `fold`.**
 
 ---
@@ -112,7 +112,7 @@ fact 3 ⤳ 3 * fact 2
 ### What happens in the stack and heap
 
 Each call pushes a **stack frame** holding its parameters and the *work still
-pending after the recursive call returns* — here the multiplication `x * _`.
+pending after the recursive call returns* - here the multiplication `x * _`.
 The frames pile up to a depth equal to the recursion depth, then the base case
 fires and they **unwind**, doing the deferred work on the way out:
 
@@ -145,7 +145,7 @@ isEven 10   // true
 ## 5. Recursion over recursive types
 
 Recursive *types* (`01-data-types`) are consumed by recursive *functions* with
-the same shape — one match case per constructor:
+the same shape - one match case per constructor:
 
 ```fsharp
 type Tree = Leaf | Node of Tree * int * Tree
@@ -161,19 +161,19 @@ let rec sum t =
 ## 6. Tail recursion
 
 A call is in **tail position** if nothing is left to do after it returns. A
-function is **tail recursive** when its recursive call is in tail position — the
+function is **tail recursive** when its recursive call is in tail position - the
 result of the recursive call *is* the result. The compiler then reuses one stack
 frame instead of pushing new ones, so it **cannot overflow the stack** and runs
 like a loop.
 
 > A function is **not** tail recursive if, after the recursive call returns, the
-> function still has work to do (e.g. `x * fact (x-1)` — the `*` is pending).
+> function still has work to do (e.g. `x * fact (x-1)` - the `*` is pending).
 
 Two techniques turn a non-tail function into a tail-recursive one. The core
 difference is **what is carried along**: an accumulator stores *data*, a
 continuation stores *instructions*.
 
-### Accumulators — carry the result so far
+### Accumulators - carry the result so far
 
 Pass the partial result down as an extra argument; at the base case it's already
 complete, so there's nothing pending.
@@ -182,7 +182,7 @@ complete, so there's nothing pending.
 let sum xs =
     let rec loop acc = function
         | []      -> acc                 // answer already built
-        | x :: xs -> loop (acc + x) xs   // tail call — add as we go
+        | x :: xs -> loop (acc + x) xs   // tail call - add as we go
     loop 0 xs
 
 let reverse xs =
@@ -192,7 +192,7 @@ let reverse xs =
     loop [] xs
 ```
 
-### Continuations — carry the work to do later
+### Continuations - carry the work to do later
 
 Pass a function representing "what to do with the result." You don't compute now;
 you describe what should happen later, and the call stays in tail position.
@@ -211,3 +211,46 @@ recursive call is the last thing done.
 
 > Tail recursion, accumulators, and continuations: slides **Lecture 8**
 > (optimisation), or HR chapters **8.1–8.6** and **9**.
+
+
+### MATCH WITH vs FUNCTION
+function is shorthand for an anonymous function that immediately pattern matches on its single argument.
+```
+let f =
+    function
+    | [] -> 0
+    | x::xs -> x
+```
+is equivalent to:
+```
+let f xs =
+    match xs with
+    | [] -> 0
+    | x::xs -> x
+```
+key constraint: function only works when you are defining a function with exactly one implicit argument. it introduces that argument automatically.
+
+once you already have named parameters, function becomes wrong:
+```
+let g xs cont =
+    function
+    | [] -> cont 0
+    | x::xs -> cont x
+```
+this is actually:
+```
+let g xs cont =
+    fun arg ->
+        match arg with
+        | [] -> cont 0
+        | x::xs -> cont x
+```
+so g now takes 3 arguments, not 2.
+
+correct version:
+```
+let g xs cont =
+    match xs with
+    | [] -> cont 0
+    | x::xs -> cont x
+```
