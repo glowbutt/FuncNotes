@@ -200,3 +200,66 @@ s.Split([| ','; ';' |]) |> Array.toList      // by several chars
 let lastDigitsString lst =
     lst |> List.map (fun x -> x % 10) |> List.map string |> String.concat ""
 ```
+
+---
+
+## 9. List of `T` → set / seq / array of something *else*
+
+A very common task: given a `list`, produce a `Set` (or seq/array) of some
+**derived** element type. Always two steps — **(1) map** each element to its
+piece(s), then **(2) collect** the pieces into the target collection.
+
+### Each element → one value
+
+`map`, then convert with the target module:
+
+```fsharp
+[1;2;3] |> List.map (fun x -> x * x) |> Set.ofList    // set {1; 4; 9}
+[1;2;3] |> List.map string            |> List.toArray // [| "1"; "2"; "3" |]
+```
+
+### Each element → a *collection*, then merge
+
+When `f x` itself returns a set/list, you must **combine** the results:
+
+```fsharp
+// list of sets → ONE set   (e.g. rectangles → their union of coordinates)
+rects |> List.map coordsAcc |> Set.unionMany          // unions every set
+//   Set.unionMany : seq<Set<'a>> -> Set<'a>
+
+xs |> List.collect f                  // map + flatten = List.map f >> List.concat
+xs |> List.map f |> Array.concat      // list of arrays → one array
+xs |> List.map f |> Seq.concat        // list of seqs   → one seq
+```
+
+> This is the fix for a "list → set" merge: each element already gives a `Set`,
+> so combine with `Set.unionMany` (or `List.fold Set.union Set.empty`) — **not**
+> `Set.add`, which adds a single *element*, not a whole set.
+
+### …and back again (reverse) — pick the *target* module
+
+Conversions are pure and work in any direction:
+
+| from ↓ / to → | List | Array | Set | Seq |
+|---|---|---|---|---|
+| **List**  | — | `List.toArray` | `Set.ofList` | `List.toSeq` |
+| **Array** | `Array.toList` | — | `Set.ofArray` | `Array.toSeq` |
+| **Set**   | `Set.toList` | `Set.toArray` | — | `Set.toSeq` |
+| **Seq**   | `Seq.toList` | `Seq.toArray` | `Set.ofSeq` | — |
+
+### Async / parallel version
+
+When producing each piece is *async* work you want to overlap, map to
+`Async<_>`, run with `Async.Parallel` (which yields an **array**), then collect:
+
+```fsharp
+items
+|> List.map (fun x -> async { return expensive x })   // Async<'b> list
+|> Async.Parallel                                      // Async<'b[]>
+|> Async.RunSynchronously                              // 'b[]
+|> Set.ofArray                                         // collect → set (or Array.toList, …)
+```
+
+Only the **work** is async — the conversion itself is always pure/synchronous,
+so the "reverse" is just the normal `Array.toList` / `Set.ofArray` step at the
+end. (`async` / `Async.Parallel` details → `05-advancedFP`.)
