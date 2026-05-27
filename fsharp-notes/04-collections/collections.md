@@ -10,11 +10,11 @@ immutable by default.
 
 | Collection | Literal | Mutable? | Ordered? | Lookup | Best at |
 |------------|---------|:--------:|:--------:|--------|---------|
-| **List**  | `[1; 2; 3]`        | no  | yes | O(n) | head/tail recursion, prepend |
-| **Array** | `[\| 1; 2; 3 \|]`  | yes | yes | O(1) index | random access, in-place update |
+| **List**  | `[1; 2; 3]`        | no  | yes | O(n) | recursion, prepend |
+| **Array** | [\| 1; 2; 3 \|]  | yes | yes | O(1) index | random access, mutation |
 | **Set**   | `set [1; 2; 3]`    | no  | sorted | O(log n) | membership, uniqueness |
 | **Map**   | `Map.ofList [(1,"a")]` | no | sorted by key | O(log n) | key → value lookup |
-| **Seq**   | `seq { 1; 2; 3 }`  | no  | yes | lazy | huge/infinite/streamed data |
+| **Seq**   | `seq { 1; 2; 3 }`  | no  | yes | lazy | large / lazy / infinite |
 
 ---
 
