@@ -28,7 +28,7 @@ let add5 = adder 5               // add5 7 = 12
 
 ---
 
-## 2. map, filter, fold — the workhorses
+## 2. map, filter, fold
 
 Three HOFs cover most list processing. (They exist for every collection, e.g.
 `List.map`, `Array.map`, `Seq.map`.)
@@ -211,3 +211,46 @@ recursive call is the last thing done.
 
 > Tail recursion, accumulators, and continuations: slides **Lecture 8**
 > (optimisation), or HR chapters **8.1–8.6** and **9**.
+
+
+### MATCH WITH vs FUNCTION
+function is shorthand for an anonymous function that immediately pattern matches on its single argument.
+```
+let f =
+    function
+    | [] -> 0
+    | x::xs -> x
+```
+is equivalent to:
+```
+let f xs =
+    match xs with
+    | [] -> 0
+    | x::xs -> x
+```
+key constraint: function only works when you are defining a function with exactly one implicit argument. it introduces that argument automatically.
+
+once you already have named parameters, function becomes wrong:
+```
+let g xs cont =
+    function
+    | [] -> cont 0
+    | x::xs -> cont x
+```
+this is actually:
+```
+let g xs cont =
+    fun arg ->
+        match arg with
+        | [] -> cont 0
+        | x::xs -> cont x
+```
+so g now takes 3 arguments, not 2.
+
+correct version:
+```
+let g xs cont =
+    match xs with
+    | [] -> cont 0
+    | x::xs -> cont x
+```
