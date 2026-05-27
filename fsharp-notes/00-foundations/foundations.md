@@ -86,6 +86,33 @@ x <- x + 1          // `<-` assigns to a mutable binding
 Why it matters: easier to reason about, no hidden side effects, safe to
 parallelise.
 
+### Side effects & sequencing (`;`)
+
+A **side effect** is anything a function does besides return a value — printing,
+or mutating (`<-`, `arr.[i] <- x`). Such expressions return **`unit`** (`()`).
+
+The semicolon **sequences** two expressions: `e1 ; e2` evaluates `e1` (for its
+effect, discarding its result), then evaluates `e2` and returns *its* value. The
+left side **must be `unit`**, else you get a warning.
+
+```fsharp
+let eat t p =
+    getLeftFork t p ; getRightFork t p   // run left (unit), then right; result = right
+```
+
+A **newline at the same indentation does the same thing** — usually preferred:
+
+```fsharp
+let eat t p =
+    getLeftFork t p        // unit
+    getRightFork t p       // value of the block = this last expression
+```
+
+- To discard a non-`unit` result so it can sit on the left, pipe it to
+  `ignore`: `expensive () |> ignore`.
+- Don't confuse this `;` with the **separator** `;` in `[1; 2; 3]` or
+  `{ A = 1; B = 2 }` — same symbol, different role.
+
 ---
 
 ## 5. Operators
