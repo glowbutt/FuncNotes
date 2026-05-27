@@ -398,3 +398,129 @@ Array.Parallel.map expensiveFunction data
 - `Async.Start` = run in background
 - `Async.Parallel` = run multiple async tasks together
 - async does NOT mean parallel automatically
+
+---
+
+## 4. Binary & unary operators in a parser
+
+*(Builds on §2 Parsers; examples from Assignment 10's expression parser and
+Lecture 11 "Parser Combinators".)*
+
+When you parse a language, operator **syntax** (`a + b`, `-a`, `x = y`) becomes
+**AST nodes** (`Add(a,b)`, `Mul(Num -1, a)`, `Eq(x,y)`). Operators come in two
+shapes, and the parser captures each with one tiny combinator:
+
+- **binary operator (`binop`)** — an operator *between* two operands: `a + b`
+- **unary operator (`unop`)** — an operator on *one* operand: `-a`, `~b`
+
+### Prerequisite: whitespace-eating combinators
+
+Built from the base combinators `.>>.` (keep both), `.>>` (keep left), `>>.`
+(keep right) plus `spaces = many pwhitespaceChar`:
+
+```fsharp
+let (.>*>.) p1 p2 = (p1 .>> spaces) .>>. p2   // run both, swallow spaces between
+let (.>*>)  p1 p2 = p1 .>*>. p2 |>> fst       // keep LEFT  result
+let (>*>.)  p1 p2 = p1 .>*>. p2 |>> snd       // keep RIGHT result
+```
+
+### The two combinators
+
+```fsharp
+let unop  op a   = op >*>. a            // parse op, throw it away, return a's result
+//  unop : Parser<'op> -> Parser<'a> -> Parser<'a>
+
+let binop op a b = a .>*> op .>*>. b     // parse a, then op (discarded), then b
+//  binop : Parser<'op> -> Parser<'a> -> Parser<'b> -> Parser<'a * 'b>
+```
+
+- `unop` returns the **single** operand (the operator symbol is consumed but dropped).
+- `binop` returns a **tuple** `(left, right)` — because a binary operator has two operands.
+
+### Turning the parse into an AST node with `|>>`
+
+`|>>` maps the parser's result. A `binop` gives a tuple, which lines up exactly
+with a 2-argument constructor; a `unop` gives a single value for a 1-argument one:
+
+```fsharp
+let AddParse = binop (pchar '+') ProdParse TermParse |>> Add  <?> "Add"
+//  (x, y)  →  Add (x, y)        because Add : aexpr * aexpr -> aexpr
+let NotParse = unop (pchar '~') BoolArithParse       |>> Not  <?> "Not"
+//   b       →  Not b
+```
+
+When the operator is **not** a primitive AST case, map with a lambda instead —
+desugaring it into the core constructors:
+
+```fsharp
+// subtraction:  a - b   ≡   a + (b * -1)
+let SubParse = binop (pchar '-') ProdParse TermParse
+               |>> (fun (x, y) -> Add (x, Mul (y, Num -1)))
+// unary minus:  -a      ≡   -1 * a
+let NegParse = unop  (pchar '-') AtomParse
+               |>> (fun x -> Mul (Num -1, x))
+```
+
+(`<?> "name"` just labels a parser for nicer error messages.)
+
+### Precedence = layering the grammar
+
+A naive grammar like `A → A + A | A * A | x` is **ambiguous** and
+**left-recursive** (Lec 11). You fix both by splitting it into one
+*non-terminal per precedence level*, loosest-binding at the top:
+
+```text
+Term  →  Prod + Term   |  Prod        (+ , -   bind loosest)
+Prod  →  Atom * Prod   |  Atom        (* , /   bind tighter)
+Atom  →  int | -Atom | ( Term )       (literals/parens bind tightest)
+```
+
+Each level is just `binop`/`unop` + `choice`, and the mutual recursion (an
+`Atom` can contain a whole `Term` inside parentheses) is tied together with
+**`createParserForwardedToRef`** — declare a parser before it's defined, fill it
+in later with `:=`:
+
+```fsharp
+let TermParse, tref = createParserForwardedToRef<aexpr>()
+let ProdParse, pref = createParserForwardedToRef<aexpr>()
+let AtomParse, aref = createParserForwardedToRef<aexpr>()
+
+let AddParse = binop (pchar '+') ProdParse TermParse |>> Add
+do tref := choice [AddParse; ProdParse]                  // + : loosest
+
+let MulParse = binop (pchar '*') AtomParse ProdParse |>> Mul
+do pref := choice [MulParse; AtomParse]                  // * : tighter
+
+let NParse   = pint32 |>> Num
+let NegParse = unop (pchar '-') AtomParse |>> (fun x -> Mul (Num -1, x))
+let ParParse = parenthesise TermParse                    // ( ) re-enters the top
+do aref := choice [NParse; NegParse; ParParse]           // atoms : tightest
+```
+
+### Derive everything from a minimal core
+
+Keep the AST small (`Add, Mul, Div`, `Eq, Lt, Conj, Not`) and define the rest as
+**smart constructors**; the operator parsers then just map onto those:
+
+```fsharp
+let (.-.)  a b = Add (a, Mul (b, Num -1))    // subtraction
+let (.||.) b1 b2 = ~~(~~b1 .&&. ~~b2)        // a∨b  = ¬(¬a ∧ ¬b)   (De Morgan)
+let (.<>.) a b = ~~(a .=. b)                 // a≠b  = ¬(a=b)
+let (.<=.) a b = a .<. b .||. ~~(a .<>. b)   // a≤b  = a<b ∨ a=b
+let (.>=.) a b = ~~(a .<. b)                 // a≥b  = ¬(a<b)
+let (.>.)  a b = ~~(a .=. b) .&&. (a .>=. b) // a>b  = a≠b ∧ a≥b
+```
+
+```fsharp
+let GtOrEqParse = binop (pstring ">=") TermParse A1Parse |>> (fun (a,b) -> a .>=. b)
+```
+
+So you only write *real* parser/eval logic for a handful of operators; `>=`,
+`<=`, `<>`, `\/`, `-`, `%` are all just rewrites.
+
+### One-line mental model
+
+| | shape | combinator | result | example map |
+|---|---|---|---|---|
+| **Unary** | `op a` | `unop op a` | the operand | `unop (pchar '~') b |>> Not` |
+| **Binary** | `a op b` | `binop op a b` | `(a, b)` tuple | `binop (pchar '+') p t |>> Add` |
