@@ -1,1 +1,0 @@
-﻿Write a .md file about sequences. Include code examples, common use cases, declarations, etc.
